@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compounder Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+<style>
+/* Layout: ranked ledger on the left, one company's case file on the right; admin is a second view. */
+:root{--bg:#f4f6f3;--surface:#fff;--ink:#16211c;--muted:#5a6861;--line:#dde3de;--accent:#0f5c4a;--accent-soft:#e2efea;
+--good:#1a7f4e;--warn:#a86a12;--bad:#b3402e;--display:"Source Serif 4",Georgia,serif;--body:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1513;--surface:#171f1c;--ink:#e6ece8;--muted:#93a29a;--line:#2a3531;--accent:#5cc4a4;--accent-soft:#1c2f29;--good:#56c58a;--warn:#e0a84a;--bad:#ee8370}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1513;--surface:#171f1c;--ink:#e6ece8;--muted:#93a29a;--line:#2a3531;--accent:#5cc4a4;--accent-soft:#1c2f29;--good:#56c58a;--warn:#e0a84a;--bad:#ee8370}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{max-width:1320px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font:600 28px/1.1 var(--display);margin:0;text-wrap:balance}
+h2{font:600 20px/1.2 var(--display);margin:0;text-wrap:balance}
+h3{font:600 12px/1.3 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+p{margin:0}.muted{color:var(--muted)}.small{font-size:13px}.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+nav{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:3px}
+nav a{padding:6px 14px;border-radius:6px;color:var(--muted);text-decoration:none;font-weight:500}
+nav a.on{background:var(--accent);color:var(--surface)}
+a{color:var(--accent)}:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.strip{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.cols{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.ledger{flex:3 1 640px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+.file{flex:2 1 360px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:16px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:500 12px var(--body);color:var(--muted);text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
+td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+tbody tr{cursor:pointer}tbody tr:hover{background:var(--accent-soft)}tbody tr.sel{background:var(--accent-soft);box-shadow:inset 3px 0 var(--accent)}
+.tk{font-weight:600}.nm{display:block;color:var(--muted);font-size:12px;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-block;white-space:nowrap;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:500;border:1px solid currentColor}
+.pill.c{color:var(--good)}.pill.w{color:var(--warn)}.pill.p{color:var(--muted)}
+.bar{display:inline-block;width:64px;height:6px;background:var(--line);border-radius:3px;vertical-align:middle;margin-right:8px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px}
+.kv div{border:1px solid var(--line);border-radius:6px;padding:8px 10px}.kv b{display:block;font:500 17px var(--mono)}.kv span{font-size:12px;color:var(--muted)}
+.sb{display:grid;grid-template-columns:118px 1fr 34px;gap:8px;align-items:center;font-size:13px}.sb .bar{width:100%;margin:0}
+.sec{display:flex;flex-direction:column;gap:8px}
+svg{display:block;width:100%;height:auto}svg text{font:10px var(--mono);fill:var(--muted)}
+.caveat{border-left:3px solid var(--warn);padding:6px 10px;background:var(--bg);font-size:13px}
+.admin{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+fieldset{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:16px;margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
+legend{font:600 17px var(--display);padding:0 6px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+label.row{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
+input,select,button,textarea{font:14px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+input[type=range]{padding:0;accent-color:var(--accent)}input[type=checkbox]{accent-color:var(--accent)}
+button{background:var(--accent);color:var(--surface);border-color:var(--accent);cursor:pointer;font-weight:500}
+button.ghost{background:transparent;color:var(--accent)}
+.wt{display:grid;grid-template-columns:118px 1fr 40px;gap:10px;align-items:center;font-size:14px}
+.pxg{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:6px}
+.pxg label{flex-direction:row;align-items:center;gap:6px;font-family:var(--mono)}.pxg input{width:76px;padding:4px 6px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>Compounder Screen</h1><p class="muted small" id="sub"></p></div>
+  <nav><a href="#candidates" id="t-c">Candidates</a><a href="#admin" id="t-a">Admin</a></nav>
+</header>
+
+<section id="v-c">
+  <div class="wrap" style="padding:0">
+  <div class="strip small" id="strip"></div>
+  <div class="cols">
+    <div class="ledger"><table><thead><tr><th>#</th><th>Company</th><th>Status</th><th>Score</th><th>ROIC</th><th>Op margin</th><th>Rev growth</th><th>FCF yield</th><th>EV/EBIT</th><th>Safety margin</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <aside class="file" id="file"></aside>
+  </div>
+  <p class="muted small">This is a research screen built from company filings. It ranks businesses against the rules you set in Admin and is not personalized investment advice. Check the filings before acting on any row.</p>
+  </div>
+</section>
+
+<section id="v-a" hidden>
+  <div class="admin">
+    <fieldset><legend>Scoring weights</legend>
+      <p class="muted small">How much each pillar counts in the composite score. Weights are rescaled to total 100.</p>
+      <div id="wts"></div>
+      <label>Minimum score to be a candidate<input type="number" id="minScore" min="0" max="100"></label>
+    </fieldset>
+    <fieldset><legend>Valuation assumptions</legend>
+      <label>Discount rate, % a year<input type="number" id="disc" step="0.5" min="4" max="20"></label>
+      <label>Terminal growth, % a year<input type="number" id="term" step="0.5" min="0" max="5"></label>
+      <label>Cap on first five years of growth, %<input type="number" id="gcap" step="1" min="0" max="40"></label>
+      <label>Tax rate used for ROIC, %<input type="number" id="tax" step="1" min="0" max="40"></label>
+      <label>Safety margin required, %<input type="number" id="mos" step="5" min="-50" max="70"></label>
+      <p class="muted small">The DCF starts from average free cash flow over the last three years, grows it at the company's own revenue growth rate (up to the cap) for five years, fades to terminal growth by year ten, then subtracts net debt.</p>
+    </fieldset>
+    <fieldset><legend>Universe and watchlist</legend>
+      <label>Minimum latest revenue, $ millions<input type="number" id="minRev" step="500" min="0"></label>
+      <label>Watchlist tickers, comma separated<input type="text" id="watch" placeholder="MSFT, COST"></label>
+      <label class="row"><input type="checkbox" id="onlyWatch">Show only my watchlist</label>
+      <label>Exclude tickers, comma separated<input type="text" id="exclude" placeholder="MO, HLF"></label>
+      <p class="muted small" id="uni"></p>
+    </fieldset>
+    <fieldset><legend>Data and refresh</legend>
+      <p class="small" id="dinfo"></p>
+      <label>Price provider<select id="provider"><option value="fmp">Financial Modeling Prep</option><option value="av">Alpha Vantage (25 a day)</option></select></label>
+      <label>API key, stored only in this browser<input type="password" id="key" autocomplete="off"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="refresh" type="button">Refresh prices</button><button id="clearpx" type="button" class="ghost">Clear price overrides</button></div>
+      <p class="small muted" id="rst">The hosted page cannot call outside services. Refresh works when you open index.html from your fork; here you can type prices below.</p>
+      <h3>Prices used, $ a share</h3>
+      <div class="pxg" id="pxg"></div>
+    </fieldset>
+  </div>
+  <p style="margin-top:16px"><button id="reset" type="button" class="ghost">Reset every setting to its default</button></p>
+</section>
+</div>
+
+<script src="data.js"></script>
+<script src="market.js"></script>
+<script>
+const $=s=>document.querySelector(s),Y=FUND.years;
+const DEF={w:{quality:35,growth:15,cash:15,balance:10,value:25},minScore:60,disc:9,term:2.5,gcap:12,tax:21,mos:20,minRev:5000,watch:"",exclude:"",onlyWatch:false,provider:"fmp",key:"",px:{},pxAt:""};
+const PIL={quality:"Quality",growth:"Growth",cash:"Cash generation",balance:"Balance sheet",value:"Valuation"};
+let S=load(),rows=[],sel=null;
+function load(){let o={};try{o=JSON.parse(localStorage.getItem("compounder-screen")||"{}")}catch(e){}
+  return {...DEF,...o,w:{...DEF.w,...(o.w||{})},px:{...(o.px||{})}}}
+function save(){try{localStorage.setItem("compounder-screen",JSON.stringify(S))}catch(e){}}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const has=v=>v!=null&&isFinite(v);
+const med=a=>{a=a.filter(has).sort((x,y)=>x-y);const n=a.length;return n?(n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2):null};
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sc=(v,lo,hi)=>has(v)?cl((v-lo)/(hi-lo),0,1)*100:null;
+const pct=(v,d=0)=>has(v)?(v*100).toFixed(d)+"%":"n/m";
+const mosT=v=>has(v)&&v<-2?"under -200%":pct(v);
+const mult=v=>has(v)?v.toFixed(1)+"x":"n/m";
+const usd=v=>has(v)?(Math.abs(v)>=1000?"$"+(v/1000).toFixed(Math.abs(v)>=1e5?0:1)+"B":"$"+Math.round(v)+"M"):"n/a";
+const list=s=>s.toUpperCase().split(/[\s,]+/).filter(Boolean);
+
+function analyze(c){
+  const m=MKT.co[c.c]||{t:"CIK"+c.c,n:c.n,s:""},i=Y.indexOf(c.L),tax=S.tax/100,flags=[],why=[],risk=[];
+  const ic=Y.map((y,k)=>has(c.eq[k])?c.eq[k]+(c.debt[k]||0)-(c.cash[k]||0):null);
+  const roicS=Y.map((y,k)=>has(c.op[k])&&ic[k]>0?c.op[k]*(1-tax)/ic[k]:null);
+  const r5=roicS.slice(i-4,i+1).filter(has),roic=r5.length>=3?med(r5):null,roicQ=has(roic)&&has(roicS[i])?(roic+Math.min(roicS[i],roic))/2:roic;
+  const opmS=Y.map((y,k)=>has(c.op[k])&&c.rev[k]?c.op[k]/c.rev[k]:null);
+  const opm=med(opmS.slice(i-4,i+1)),opmMin=Math.min(...opmS.filter(has)),opmNow=opmS[i];
+  const f=c.rev.findIndex(has),cagr=Math.pow(c.rev[i]/c.rev[f],1/(i-f))-1;
+  const fcfS=Y.map((y,k)=>has(c.cfo[k])?c.cfo[k]-(c.capex[k]||0):null);
+  let fs=0,ns=0;for(let k=i-4;k<=i;k++)if(has(fcfS[k])&&c.ni[k]>0){fs+=fcfS[k];ns+=c.ni[k]}
+  const conv=ns>0?fs/ns:null,f3=fcfS.slice(i-2,i+1).filter(has),fcf=f3.length?f3.reduce((a,b)=>a+b,0)/f3.length:null;
+  const netDebt=(c.debt[i]||0)-(c.cash[i]||0),lev=c.op[i]>0?netDebt/c.op[i]:null;
+  const px=has(S.px[m.t])?S.px[m.t]:m.px,sh=c.sh[i],mcap=has(px)&&has(sh)?px*sh:null;
+  const r=S.disc/100,gT=S.term/100,g1=cl(cagr,0,S.gcap/100);let iv=null;
+  if(has(fcf)&&fcf>0&&has(sh)&&r>gT+.005){let x=fcf,pv=0;for(let n=1;n<=10;n++){x*=1+(n<=5?g1:g1+(gT-g1)*(n-5)/5);pv+=x/Math.pow(1+r,n)}
+    pv+=x*(1+gT)/(r-gT)/Math.pow(1+r,10);iv=(pv-netDebt)/sh}
+  const mos=has(iv)&&iv>0&&has(px)?1-px/iv:null,fy=has(mcap)&&has(fcf)?fcf/mcap:null,ev=has(mcap)&&c.op[i]>0?(mcap+netDebt)/c.op[i]:null;
+  const steady=sc(opmMin/opm,0,.8);
+  const s={quality:has(roic)?.6*sc(roicQ,.08,.35)+.25*sc(opm,.05,.35)+.15*steady:.6*sc(opm,.05,.35)+.4*steady,
+    growth:sc(cagr,0,.15),cash:sc(conv,.4,1.1)??50,balance:has(lev)?100-sc(lev,0,4):50,value:sc(mos,-.6,.3)??0};
+  let tw=0,tot=0;for(const k in S.w){tw+=+S.w[k];tot+=S.w[k]*s[k]}const score=tw?tot/tw:0;
+  const status=score>=S.minScore&&s.quality>=60&&has(mos)&&mos>=S.mos/100?"c":s.quality>=70?"w":"p";
+  if(!has(roic))flags.push("Invested capital is negative or missing in most recent years, usually because buybacks exceed book equity. ROIC is not meaningful, so quality is scored on margins alone.");
+  else if(roic>1)flags.push("ROIC above 100% reflects a very small capital base after buybacks. Read it as high, not as a precise figure.");
+  if(!has(c.debt[i]))flags.push("No debt figure was found in the filing tags screened. Net debt, ROIC and the DCF may be too favorable. Check the balance sheet in the 10-K.");
+  if(!has(c.capex[i]))flags.push("Capital spending was not found in the tags screened, so free cash flow here equals operating cash flow and is overstated.");
+  if(!has(px))flags.push("No price on file. Add one in Admin to see valuation.");
+  flags.push("Market value uses diluted shares from the latest fiscal year. A stock split or large buyback since then will skew it.");
+  if(has(roic)&&has(roicS[i])&&roicS[i]<roic*.6)risk.push(`Returns are falling: ROIC was ${pct(roicS[i])} in ${c.L} against a five-year median of ${pct(roic)}.`);
+  if(has(roic))why.push(`Median ROIC of ${pct(roic)} over five years ${roic>=.2?"is far above a typical 8 to 10% cost of capital":roic>=.12?"clears a typical 8 to 10% cost of capital":"is close to a typical cost of capital"}.`);
+  why.push(`Operating margin has run near ${pct(opm)} and its lowest year since ${Y[f]} was ${pct(opmMin)}.`);
+  why.push(`Revenue compounded at ${pct(cagr,1)} a year from ${Y[f]} to ${c.L}.`);
+  if(has(conv))why.push(`Free cash flow came to ${pct(conv)} of net income over five years.`);
+  why.push(has(lev)?(netDebt<=0?"The balance sheet holds more cash than debt.":`Net debt is ${mult(lev)} operating income.`):"Leverage could not be measured.");
+  if(has(mos))why.push(mos>=0?`At $${px.toFixed(2)}, the price sits ${pct(mos)} below the DCF value of $${iv.toFixed(0)} a share.`:`At $${px.toFixed(2)}, the price sits ${pct(px/iv-1)} above the DCF value of $${iv.toFixed(0)} a share.`);
+  if(cagr<.03)risk.push("Revenue growth is under 3% a year, so compounding depends on margins and buybacks.");
+  if(has(opmNow)&&opmNow<opm*.8)risk.push(`Margin is compressing: ${pct(opmNow)} in ${c.L} against a five-year median of ${pct(opm)}.`);
+  if(lev>3)risk.push(`Leverage is high at ${mult(lev)} operating income.`);
+  if(has(mos)&&mos<-.3)risk.push("The price assumes growth well above what this model allows. A long holding period helps only if that growth arrives.");
+  if(cagr>S.gcap/100)risk.push(`Past growth of ${pct(cagr)} is capped at ${S.gcap}% in the DCF, since few companies sustain it.`);
+  if(has(conv)&&conv<.7)risk.push("Less than 70% of reported profit has turned into free cash flow.");
+  if(!risk.length)risk.push("No rule-based warning fired. That is not the same as no risk: read the risk factors in the latest 10-K.");
+  return {c,t:m.t,n:m.n,sec:m.s,i,roic,roicS,opm,opmS,cagr,conv,fcfS,fcf,lev,netDebt,px,mcap,iv,mos,fy,ev,s,score,status,flags,why,risk};
+}
+
+function build(){
+  const ex=new Set(list(S.exclude)),wl=new Set(list(S.watch));
+  rows=FUND.co.map(analyze).filter(r=>r.c.rev[r.i]>=S.minRev&&!ex.has(r.t)&&(!S.onlyWatch||wl.has(r.t))).sort((a,b)=>b.score-a.score);
+  rows.forEach(r=>r.star=wl.has(r.t));
+  if(!rows.find(r=>r.t===sel))sel=rows[0]&&rows[0].t;
+}
+const ST={c:"Candidate",w:"Quality, wait on price",p:"Outside rules"};
+function render(){
+  build();
+  const n=k=>rows.filter(r=>r.status===k).length;
+  $("#sub").textContent=`${FUND.co.length} companies shortlisted from ${FUND.screened} US filers. Fundamentals through fiscal ${Y[Y.length-1]} from SEC filings; prices as of ${S.pxAt||MKT.asOf}.`;
+  $("#strip").innerHTML=`<span><b class="num">${rows.length}</b> in view</span><span class="pill c">${n("c")} candidates</span><span class="pill w">${n("w")} quality, wait on price</span><span class="pill p">${n("p")} outside rules</span><span class="muted">Candidate means a score of ${S.minScore} or more, a quality score of 60 or more and a safety margin of at least ${S.mos}%.</span>`;
+  $("#tb").innerHTML=rows.map((r,k)=>`<tr data-t="${esc(r.t)}" class="${r.t===sel?"sel":""}" tabindex="0"><td class="num muted">${k+1}</td><td><span class="tk">${esc(r.t)}${r.star?" ★":""}</span><span class="nm">${esc(r.n)}</span></td><td><span class="pill ${r.status}">${ST[r.status]}</span></td><td class="num"><span class="bar"><i style="width:${r.score.toFixed(0)}%"></i></span>${r.score.toFixed(0)}</td><td class="num">${pct(r.roic)}</td><td class="num">${pct(r.opm)}</td><td class="num">${pct(r.cagr,1)}</td><td class="num">${pct(r.fy,1)}</td><td class="num">${mult(r.ev)}</td><td class="num ${r.mos>=0?"pos":"neg"}">${mosT(r.mos)}</td></tr>`).join("")||`<tr><td colspan="10" style="text-align:left">No company matches the universe rules. Loosen them in Admin.</td></tr>`;
+  file();admin();
+}
+function bars(v,fmt){const W=360,H=120,p=22,d=v.filter(has),mx=Math.max(...d,0),mn=Math.min(...d,0),sp=mx-mn||1,bw=(W-2*p)/v.length,y=x=>p/2+(mx-x)/sp*(H-p-p/2);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img"><line x1="${p}" x2="${W-p}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>${v.map((x,k)=>has(x)?`<rect x="${p+k*bw+3}" width="${bw-6}" y="${Math.min(y(x),y(0))}" height="${Math.max(1,Math.abs(y(x)-y(0)))}" rx="2" fill="var(--accent)" opacity="${k===v.length-1?1:.55}"/>`:"").join("")}${Y.map((yr,k)=>k%3===0||k===Y.length-1?`<text x="${p+k*bw+bw/2}" y="${H-3}" text-anchor="middle">${yr}</text>`:"").join("")}<text x="${W-p}" y="9" text-anchor="end">latest ${fmt(v[v.length-1])}, peak ${fmt(mx)}</text></svg>`}
+function lines(ss){const W=360,H=120,p=22,all=ss.flatMap(s=>s.v.map(x=>has(x)?Math.min(x,1):null)).filter(has),mx=Math.max(...all,.1),mn=Math.min(...all,0),bw=(W-2*p)/(Y.length-1),y=x=>p/2+(mx-Math.min(x,1))/(mx-mn)*(H-p-p/2);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img">${[mn,(mn+mx)/2,mx].map(g=>`<line x1="${p}" x2="${W-p}" y1="${y(g)}" y2="${y(g)}" stroke="var(--line)"/><text x="${p-3}" y="${y(g)+3}" text-anchor="end">${pct(g)}</text>`).join("")}${ss.map(s=>{const pts=s.v.map((x,k)=>has(x)?[p+k*bw,y(x)]:null).filter(Boolean);const l=pts[pts.length-1];return pts.length?`<polyline fill="none" stroke="${s.col}" stroke-width="2" points="${pts.map(q=>q.join(",")).join(" ")}"/><circle cx="${l[0]}" cy="${l[1]}" r="3" fill="${s.col}"/>`:""}).join("")}${Y.map((yr,k)=>k%3===0||k===Y.length-1?`<text x="${p+k*bw}" y="${H-3}" text-anchor="middle">${yr}</text>`:"").join("")}</svg>`}
+function file(){
+  const r=rows.find(x=>x.t===sel),el=$("#file");if(!r){el.innerHTML="<p class='muted'>Pick a company.</p>";return}
+  el.innerHTML=`<div class="sec"><h3>${esc(r.sec||"Company file")}</h3><h2>${esc(r.n)} <span class="muted num" style="font-size:15px">${esc(r.t)}</span></h2><div><span class="pill ${r.status}">${ST[r.status]}</span> <span class="num">score ${r.score.toFixed(0)} of 100</span></div></div>
+  <div class="sec"><h3>Why it ranks here</h3><ul>${r.why.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
+  <div class="sec"><h3>What could go wrong</h3><ul>${r.risk.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
+  <div class="sec"><h3>Score by pillar</h3>${Object.keys(PIL).map(k=>`<div class="sb"><span>${PIL[k]}</span><span class="bar"><i style="width:${r.s[k].toFixed(0)}%"></i></span><span class="num">${r.s[k].toFixed(0)}</span></div>`).join("")}</div>
+  <div class="sec"><h3>Valuation</h3><div class="kv"><div><b>${has(r.px)?"$"+r.px.toFixed(2):"n/a"}</b><span>Price</span></div><div><b>${has(r.iv)?"$"+r.iv.toFixed(0):"n/m"}</b><span>DCF value a share</span></div><div><b class="${r.mos>=0?"pos":"neg"}">${mosT(r.mos)}</b><span>Safety margin</span></div><div><b>${usd(r.mcap)}</b><span>Market value</span></div><div><b>${pct(r.fy,1)}</b><span>FCF yield</span></div><div><b>${mult(r.ev)}</b><span>EV/EBIT</span></div></div></div>
+  <div class="sec"><h3>Revenue, $ millions</h3>${bars(r.c.rev,usd)}</div>
+  <div class="sec"><h3>Free cash flow, $ millions</h3>${bars(r.fcfS,usd)}</div>
+  <div class="sec"><h3><span style="color:var(--accent)">ROIC</span> and <span style="color:var(--warn)">operating margin</span></h3>${lines([{v:r.roicS,col:"var(--accent)"},{v:r.opmS,col:"var(--warn)"}])}<p class="muted small">ROIC above 100% is drawn at 100%.</p></div>
+  <div class="sec"><h3>Data caveats</h3>${r.flags.map(x=>`<p class="caveat">${esc(x)}</p>`).join("")}<p class="small"><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${r.c.c}&type=10-K&dateb=&owner=include&count=10">Open this company's 10-K filings on SEC.gov</a></p></div>`;
+}
+function admin(){
+  $("#wts").innerHTML=Object.keys(PIL).map(k=>`<div class="wt"><label for="w-${k}" style="color:var(--ink)">${PIL[k]}</label><input type="range" id="w-${k}" min="0" max="60" value="${S.w[k]}" data-w="${k}"><span class="num" id="wv-${k}">${S.w[k]}</span></div>`).join("");
+  for(const k of ["minScore","disc","term","gcap","tax","mos","minRev","watch","exclude","provider","key"])if(document.activeElement!==$("#"+k))$("#"+k).value=S[k];
+  $("#onlyWatch").checked=S.onlyWatch;
+  $("#uni").textContent=`${rows.length} of ${FUND.co.length} shortlisted companies pass these rules. The shortlist is the top ${FUND.co.length} by a first-pass quality rank among ${FUND.screened} US filers with revenue above $5 billion, eight or more years of data and no operating loss since ${Y[0]}. Banks and insurers drop out because they do not report operating income.`;
+  $("#dinfo").textContent=`Fundamentals: SEC EDGAR, snapshot taken ${FUND.asOf}. Prices: ${MKT.src}, ${MKT.asOf}${S.pxAt?"; your refresh or overrides, "+S.pxAt:""}.`;
+  $("#pxg").innerHTML=FUND.co.map(c=>MKT.co[c.c]).filter(Boolean).sort((a,b)=>a.t<b.t?-1:1).map(m=>`<label>${esc(m.t)}<input type="number" step="0.01" min="0" data-px="${esc(m.t)}" value="${has(S.px[m.t])?S.px[m.t]:m.px??""}" id="px-${esc(m.t)}"></label>`).join("");
+}
+document.addEventListener("input",e=>{const t=e.target;
+  if(t.dataset.w){S.w[t.dataset.w]=+t.value;$("#wv-"+t.dataset.w).textContent=t.value;save();build();return}
+  if(t.dataset.px){const v=parseFloat(t.value);if(v>0)S.px[t.dataset.px]=v;else delete S.px[t.dataset.px];S.pxAt=new Date().toISOString().slice(0,10);save();return}
+  if(t.id==="onlyWatch")S.onlyWatch=t.checked;else if(["watch","exclude","provider","key"].includes(t.id))S[t.id]=t.value.trim();
+  else if(t.id in DEF&&t.value!==""&&isFinite(+t.value))S[t.id]=+t.value;else return;save()});
+document.addEventListener("change",e=>{if(e.target.closest("#v-a"))render()});
+function pick(e){const tr=e.target.closest("tr[data-t]");if(tr&&(e.type==="click"||e.key==="Enter")){sel=tr.dataset.t;render()}}
+$("#tb").addEventListener("click",pick);$("#tb").addEventListener("keydown",pick);
+$("#reset").onclick=()=>{S={...DEF,w:{...DEF.w},px:{}};save();render()};
+$("#clearpx").onclick=()=>{S.px={};S.pxAt="";save();render()};
+$("#refresh").onclick=async()=>{const st=$("#rst");if(!S.key){st.textContent="Add an API key first.";return}
+  let ts=FUND.co.map(c=>MKT.co[c.c]&&MKT.co[c.c].t).filter(Boolean),ok=0;if(S.provider==="av")ts=ts.slice(0,25);st.textContent="Fetching prices…";
+  try{for(const t of ts){const u=S.provider==="fmp"?`https://financialmodelingprep.com/stable/quote?symbol=${t}&apikey=${encodeURIComponent(S.key)}`:`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${t}&apikey=${encodeURIComponent(S.key)}`;
+      const j=await(await fetch(u)).json(),p=S.provider==="fmp"?(j[0]&&j[0].price):+((j["Global Quote"]||{})["05. price"]);if(p>0){S.px[t]=+p;ok++}st.textContent=`Fetched ${ok} of ${ts.length}…`}
+    if(ok){S.pxAt=new Date().toISOString().slice(0,10);save();render()}$("#rst").textContent=ok?`Updated ${ok} of ${ts.length} prices.`:"The provider returned no prices. Check the key and your plan's limits."}
+  catch(err){st.textContent="Could not reach the provider. The hosted page blocks outside requests. Open index.html from your fork to refresh, or type prices below."}};
+function route(){const a=location.hash==="#admin";$("#v-a").hidden=!a;$("#v-c").hidden=a;$("#t-a").classList.toggle("on",a);$("#t-c").classList.toggle("on",!a)}
+addEventListener("hashchange",route);route();render();
+</script>
+</body>
+</html>
